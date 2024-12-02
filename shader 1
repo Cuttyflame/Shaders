@@ -1,0 +1,63 @@
+const float4x4 matWorldViewProj;
+const float4x4 matWorld;
+const float4x4 matView;
+const float4 vecViewDir;
+const float4 vecViewPos;
+const float4 vecSkill41;
+const float4 vecTime;
+const float fAmbient;
+
+texture entSkin1;
+sampler TextureMapSampler = sampler_state 
+{ 
+	Texture = <entSkin1>; 
+	AddressU  = Wrap; 
+	AddressV  = Wrap; 
+}; 
+
+#include "shadowIncl.fx"
+
+void DiffuseVS( 
+in float4 InPos: POSITION, 
+in float3 InNormal: NORMAL, 
+in float2 InTex: TEXCOORD0, 
+out float4 OutPos: POSITION, 
+out float2 OutTex: TEXCOORD0, 
+out float3 OutNormal: TEXCOORD1) 
+{ 
+	float time = vecTime.w*0.25;
+	float3 modulation = sin(time + InPos.yzx * 0.175)*7;
+	InPos.xyz += InNormal * modulation;
+	InNormal.xyz += modulation*0.05;
+	OutPos = mul(InPos, matWorldViewProj); 
+	OutNormal = (mul(InNormal, matWorld));
+	OutTex.xy = InTex; 
+} 
+
+float4 DiffusePS( 
+in float2 InTex: TEXCOORD0, 
+in float3 InNormal: TEXCOORD1): COLOR 
+{ 
+	InNormal = normalize(InNormal);
+	
+	float3 InSunDir = -normalize(float3(4.75,-8,3));
+	float Diffuse = 0.7 + 0.5*saturate(dot(InSunDir, InNormal)); 
+
+	float4 Color = tex2D(TextureMapSampler, InTex.xy*2);
+	Color.rg += InNormal.xy*0.3;
+	float4 final = Color*Diffuse + InNormal.z*0.2;
+
+	return final;
+} 
+
+
+technique DiffuseTechnique 
+{ 
+	pass P0 
+	{ 
+		zWriteEnable = true;
+		alphaBlendEnable = false;
+		VertexShader = compile vs_3_0 DiffuseVS(); 
+		PixelShader  = compile ps_3_0 DiffusePS(); 
+	} 
+}
